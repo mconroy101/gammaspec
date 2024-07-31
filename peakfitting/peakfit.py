@@ -30,6 +30,14 @@ def polynomial_bg(x, a, b, c, *args):
 def step(x, x0, sigma, N, stp):
     return (N/(sigma*np.sqrt(2*np.pi)))*(stp/(1+np.exp((x-x0)/sigma)))
 
+def background_step(x, a, b, c, stp, sigma, x0, N, *args):
+    background = polynomial_bg(x, a, b, c) + step(x, x0, sigma, N, stp)
+    for i in range(int(len(args)/3)):
+        x02, N2, skw2 = args[i*3:i*3+3]
+        background += step(x, x02, sigma, N2, stp)
+
+    return background
+
 def gaussian(x, x0, sigma, N):
     return (N/(sigma*np.sqrt(2*np.pi)))*np.exp(-((x-x0)**2) / (2*sigma**2))    
 
@@ -43,7 +51,6 @@ def fit_function_0(x, a, b, c, stp, sigma, x0, N, skw, *args):
     """
     Fits skewed gaussian with polynomial background + step.
     """
-    
     fit = polynomial_bg(x, a, b, c) + step(x, x0, sigma, N, stp) + skewed_gaussian(x, x0, sigma, N, skw)
     for i in range(int(len(args)/3)):
         # print(args)
@@ -56,9 +63,10 @@ def fit_function_0(x, a, b, c, stp, sigma, x0, N, skw, *args):
 
     return fit
 
+
 def fit_function_1(x, a, b, c, stp, sigma, x0, N, beta, *args):
     """
-    Fits gaussian with low E tail, polynomial background + step.
+    Fits gaussian with low E tail, polynomial background + step. RADWARE
     """
 
     fit = polynomial_bg(x, a, b, c) + step(x, x0, sigma, N, stp) + gaussian(x, x0, sigma, N) + tail(x, x0, sigma, N, beta)
@@ -71,9 +79,37 @@ def fit_function_1(x, a, b, c, stp, sigma, x0, N, beta, *args):
 
     return fit
 
-def fit_function_2(x, a, b, c, sigma, x0, N, *args):
+def fit_function_2(x, a, b, c, sigma, x0, N, beta, *args):
     """
-    Fits gaussian with polynomial background.
+    Fits gaussian with low E tail, polynomial background + step. RADWARE
+    """
+
+    fit = polynomial_bg(x, a, b, c) + gaussian(x, x0, sigma, N) + tail(x, x0, sigma, N, beta)
+
+    for i in range(int(len(args)/3)):
+        x02, N2, beta2 = args[i*3:i*3+3]
+        fit += gaussian(x, x02, sigma, N2)
+        fit += tail(x, x02, sigma, N2, beta2)
+
+    return fit
+    
+def fit_function_3(x, a, b, c, stp, sigma, x0, N, *args):
+    """
+    Fits gaussian with low E tail, polynomial background + step. RADWARE
+    """
+
+    fit = polynomial_bg(x, a, b, c) + step(x, x0, sigma, N, stp) + gaussian(x, x0, sigma, N)
+
+    for i in range(int(len(args)/2)):
+        x02, N2 = args[i*2:i*2+2]
+        fit += gaussian(x, x02, sigma, N2)
+        fit += step(x, x02, sigma, N2, stp)
+
+    return fit
+
+def fit_function_4(x, a, b, c, sigma, x0, N, *args):
+    """
+    Fits gaussian with polynomial background. BUFFIT
     """
 
     fit = polynomial_bg(x, a, b, c) + gaussian(x, x0, sigma, N)
@@ -180,6 +216,10 @@ def calc_chi_sq(x_data, y_data, popt):
         residuals = (y_data[(x_data>=x[0])&(x_data<=x[1])] - fit_function_1(x_data[(x_data>=x[0])&(x_data<=x[1])], *popt))
     elif FIT_MODE == 2:
         residuals = (y_data[(x_data>=x[0])&(x_data<=x[1])] - fit_function_2(x_data[(x_data>=x[0])&(x_data<=x[1])], *popt))
+    elif FIT_MODE == 3:
+        residuals = (y_data[(x_data>=x[0])&(x_data<=x[1])] - fit_function_3(x_data[(x_data>=x[0])&(x_data<=x[1])], *popt))
+    elif FIT_MODE == 4:
+        residuals = (y_data[(x_data>=x[0])&(x_data<=x[1])] - fit_function_4(x_data[(x_data>=x[0])&(x_data<=x[1])], *popt))
     chisq = np.sum((residuals**2/y_data[(x_data>=x[0])&(x_data<=x[1])]))
     chisq_ndf = chisq/(len(y_data[(x_data>=x[0])&(x_data<=x[1])])-N_params)
     return chisq_ndf
@@ -209,6 +249,24 @@ def print_parameters(output_dict, chisq):
 
     elif FIT_MODE == 2:
         for i in range(len(x)-2):
+            integral = quad(gaussian, x[0], x[1], args=(output_dict[f'Centroid {i+1}'].n, output_dict[f'Sigma'].n, output_dict[f'N {i+1}'].n))[0] + \
+                quad(tail, x[0], x[1], args=(output_dict[f'Centroid {i+1}'].n, output_dict[f'Sigma'].n, output_dict[f'N {i+1}'].n, output_dict[f'Beta {i+1}'].n))[0]
+            output_dict[f'Area {i+1}'] = ufloat(integral, np.sqrt(integral))
+            output_dict[f'FWHM'] = 2.35*output_dict[f'Sigma']
+        
+            print(f"Peak {i+1}: Centroid = {output_dict[f'Centroid {i+1}']:.1uS}, Area = {output_dict[f'Area {i+1}']:.1uS}, Beta = {output_dict[f'Beta {i+1}']:.1uS}")
+    
+    elif FIT_MODE == 3:
+        print(f"Step = {output_dict['Step']:.1uS}\n")
+        for i in range(len(x)-2):
+            integral = quad(gaussian, x[0], x[1], args=(output_dict[f'Centroid {i+1}'].n, output_dict[f'Sigma'].n, output_dict[f'N {i+1}'].n))[0]
+            output_dict[f'Area {i+1}'] = ufloat(integral, np.sqrt(integral))
+            output_dict[f'FWHM'] = 2.35*output_dict[f'Sigma']
+        
+            print(f"Peak {i+1}: Centroid = {output_dict[f'Centroid {i+1}']:.1uS}, Area = {output_dict[f'Area {i+1}']:.1uS}")
+
+    elif FIT_MODE == 4:
+        for i in range(len(x)-2):
             integral = quad(gaussian, x[0], x[1], args=(output_dict[f'Centroid {i+1}'].n, output_dict[f'Sigma'].n, output_dict[f'N {i+1}'].n))[0]
             output_dict[f'Area {i+1}'] = ufloat(integral, np.sqrt(integral))
             output_dict[f'FWHM'] = 2.35*output_dict[f'Sigma']
@@ -235,6 +293,10 @@ def save_fit():
             elif FIT_MODE == 1:
                 write_line = f"{datetime.datetime.now().strftime('%c')}\t{file_name}\t{FIT_MODE}\t{output_dict[f'Centroid {i+1}']}\t{output_dict[f'FWHM']}\t{output_dict[f'Area {i+1}']}\t{output_dict[f'Beta {i+1}']}\n"
             elif FIT_MODE == 2:
+                write_line = f"{datetime.datetime.now().strftime('%c')}\t{file_name}\t{FIT_MODE}\t{output_dict[f'Centroid {i+1}']}\t{output_dict[f'FWHM']}\t{output_dict[f'Area {i+1}']}\t{output_dict[f'Beta {i+1}']}\n"
+            elif FIT_MODE == 3:
+                write_line = f"{datetime.datetime.now().strftime('%c')}\t{file_name}\t{FIT_MODE}\t{output_dict[f'Centroid {i+1}']}\t{output_dict[f'FWHM']}\t{output_dict[f'Area {i+1}']}\tn/a\n"
+            elif FIT_MODE == 4:
                 write_line = f"{datetime.datetime.now().strftime('%c')}\t{file_name}\t{FIT_MODE}\t{output_dict[f'Centroid {i+1}']}\t{output_dict[f'FWHM']}\t{output_dict[f'Area {i+1}']}\tn/a\n"
             f.write(write_line)
     
@@ -250,7 +312,7 @@ if __name__ == "__main__":
         - Press enter again to close the fit plot and return to the peak selection\n\
         - Press escape at any time to close the program')
     
-    print('\nFit Modes:\n0) Skewed Gaussian + Step + Polynomial\n1) Gaussian + Skewed Gaussian Tail + Step + Polynomial\n2) Gaussian + Step + Polynomial')
+    print('\nFit Modes:\n0) Skewed Gaussian + Step + Polynomial\n1) Gaussian + Skewed Gaussian Tail + Step + Polynomial (Radware)\n2) Gaussian + Skewed Gaussian Tail + Polynomial\n3) Gaussian + Step + Polynomial\n2) Gaussian + Polynomial')
     
     try:
         file_name = str(sys.argv[1])
@@ -302,7 +364,6 @@ if __name__ == "__main__":
             popt, pcov = curve_fit(fit_function_0, x_data[(x_data>=x[0])&(x_data<=x[1])], y_data[(x_data>=x[0])&(x_data<=x[1])], p0=p0, sigma=np.sqrt(y_data[(x_data>=x[0])&(x_data<=x[1])]), absolute_sigma=True)
 
         elif FIT_MODE == 1:
-            print(len(x))
             # Initial fit parameters for a single peak
             p0 = [-0.08, 11, 91, 0, 2, x[2], 150000, 0.8]
             output_strings = ['a', 'b', 'c', 'Step', 'Sigma', 'Centroid 1', 'N 1', 'Beta 1']
@@ -312,19 +373,40 @@ if __name__ == "__main__":
                 output_strings = output_strings + [f'Centroid {i+2}', f'N {i+2}', f'Beta {i+2}']
             # Perform fit of seleted peak, over selected region 
             popt, pcov = curve_fit(fit_function_1, x_data[(x_data>=x[0])&(x_data<=x[1])], y_data[(x_data>=x[0])&(x_data<=x[1])], p0=p0, sigma=np.sqrt(y_data[(x_data>=x[0])&(x_data<=x[1])]), absolute_sigma=True)
-                
+        
         elif FIT_MODE == 2:
-
+            # Initial fit parameters for a single peak
+            p0 = [-0.08, 11, 91, 2, x[2], y[2], 0.8]
+            output_strings = ['a', 'b', 'c', 'Sigma', 'Centroid 1', 'N 1', 'Beta 1']
+            # Add [x0, N, skew] to p0 for each additional peak selected
+            for i in range(len(x)-3):
+                p0 = p0 + [x[3+i], 4000, 0.8]
+                output_strings = output_strings + [f'Centroid {i+2}', f'N {i+2}', f'Beta {i+2}']
+            # Perform fit of seleted peak, over selected region 
+            popt, pcov = curve_fit(fit_function_2, x_data[(x_data>=x[0])&(x_data<=x[1])], y_data[(x_data>=x[0])&(x_data<=x[1])], p0=p0, sigma=np.sqrt(y_data[(x_data>=x[0])&(x_data<=x[1])]), absolute_sigma=True)
+        
+        elif FIT_MODE == 3:
+            # Initial fit parameters for a single peak
+            p0 = [-0.08, 11, 91, 0, 2, x[2], y[2]]
+            output_strings = ['a', 'b', 'c', 'Step', 'Sigma', 'Centroid 1', 'N 1']
+            # Add [x0, N, skew] to p0 for each additional peak selected
+            for i in range(len(x)-3):
+                p0 = p0 + [x[3+i], y[3+i]]
+                output_strings = output_strings + [f'Centroid {i+2}', f'N {i+2}']
+            # Perform fit of seleted peak, over selected region 
+            popt, pcov = curve_fit(fit_function_3, x_data[(x_data>=x[0])&(x_data<=x[1])], y_data[(x_data>=x[0])&(x_data<=x[1])], p0=p0, sigma=np.sqrt(y_data[(x_data>=x[0])&(x_data<=x[1])]), absolute_sigma=True)
+        
+        elif FIT_MODE == 4:
             # Initial fit parameters for a single peak
             p0 = [-0.08, 11, 91, 2, x[2], y[2]]
             output_strings = ['a', 'b', 'c', 'Sigma', 'Centroid 1', 'N 1']
             # Add [x0, N, skew] to p0 for each additional peak selected
             for i in range(len(x)-3):
-                p0 = p0 + [x[3+i], 4000]
+                p0 = p0 + [x[3+i], y[3+i]]
                 output_strings = output_strings + [f'Centroid {i+2}', f'N {i+2}']
             # Perform fit of seleted peak, over selected region 
-            popt, pcov = curve_fit(fit_function_2, x_data[(x_data>=x[0])&(x_data<=x[1])], y_data[(x_data>=x[0])&(x_data<=x[1])], p0=p0, sigma=np.sqrt(y_data[(x_data>=x[0])&(x_data<=x[1])]), absolute_sigma=True)
-            
+            popt, pcov = curve_fit(fit_function_4, x_data[(x_data>=x[0])&(x_data<=x[1])], y_data[(x_data>=x[0])&(x_data<=x[1])], p0=p0, sigma=np.sqrt(y_data[(x_data>=x[0])&(x_data<=x[1])]), absolute_sigma=True)
+        
         # Calculate chi-sq
         chisq = calc_chi_sq(x_data, y_data, popt)
         # Calculate errors
@@ -359,18 +441,32 @@ if __name__ == "__main__":
             plt.plot(x_smooth, fit_function_0(x_smooth, *popt), color='red', label=f'Fit: $\chi^2_n = $ {chisq:.2f}')
             for i in range(len(x)-2):
                 plt.plot(x_smooth, skewed_gaussian(x_smooth, output_dict[f'Centroid {i+1}'].n, output_dict[f'Sigma'].n, output_dict[f'N {i+1}'].n, output_dict[f'Skew {i+1}'].n), color=colors[i], linestyle='--', label = f'Peak {i+1}')
+                plt.plot(x_smooth, background_step(x_smooth, *popt), color='orange', linestyle='--', label='Background')
         elif FIT_MODE == 1:
             plt.plot(x_smooth, fit_function_1(x_smooth, *popt), color='red', label=f'Fit: $\chi^2_n = $ {chisq:.2f}')
             for i in range(len(x)-2):
                 plt.plot(x_smooth, gaussian(x_smooth, output_dict[f'Centroid {i+1}'].n, output_dict[f'Sigma'].n, output_dict[f'N {i+1}'].n), color=colors[i], linestyle='--', label = f'Peak {i+1}')
                 plt.plot(x_smooth, tail(x_smooth, output_dict[f'Centroid {i+1}'].n, output_dict[f'Sigma'].n, output_dict[f'N {i+1}'].n, output_dict[f'Beta {i+1}'].n), color=colors[i], linestyle=':', label = f'Tail {i+1}')
+                plt.plot(x_smooth, background_step(x_smooth, *popt), color='orange', linestyle='--', label='Background')
+        elif FIT_MODE == 4:
+            plt.plot(x_smooth, fit_function_4(x_smooth, *popt), color='red', label=f'Fit: $\chi^2_n = $ {chisq:.2f}')
+            for i in range(len(x)-2):
+                plt.plot(x_smooth, gaussian(x_smooth, output_dict[f'Centroid {i+1}'].n, output_dict[f'Sigma'].n, output_dict[f'N {i+1}'].n), color=colors[i], linestyle='--', label = f'Peak {i+1}')
+                plt.plot(x_smooth, polynomial_bg(x_smooth, *popt), color='orange', linestyle='--', label='Background')
         elif FIT_MODE == 2:
             plt.plot(x_smooth, fit_function_2(x_smooth, *popt), color='red', label=f'Fit: $\chi^2_n = $ {chisq:.2f}')
             for i in range(len(x)-2):
                 plt.plot(x_smooth, gaussian(x_smooth, output_dict[f'Centroid {i+1}'].n, output_dict[f'Sigma'].n, output_dict[f'N {i+1}'].n), color=colors[i], linestyle='--', label = f'Peak {i+1}')
-
+                plt.plot(x_smooth, tail(x_smooth, output_dict[f'Centroid {i+1}'].n, output_dict[f'Sigma'].n, output_dict[f'N {i+1}'].n, output_dict[f'Beta {i+1}'].n), color=colors[i], linestyle=':', label = f'Tail {i+1}')
+                plt.plot(x_smooth, polynomial_bg(x_smooth, *popt), color='orange', linestyle='--', label='Background')
+        elif FIT_MODE == 3:
+            plt.plot(x_smooth, fit_function_3(x_smooth, *popt), color='red', label=f'Fit: $\chi^2_n = $ {chisq:.2f}')
+            for i in range(len(x)-2):
+                plt.plot(x_smooth, gaussian(x_smooth, output_dict[f'Centroid {i+1}'].n, output_dict[f'Sigma'].n, output_dict[f'N {i+1}'].n), color=colors[i], linestyle='--', label = f'Peak {i+1}')
+                plt.plot(x_smooth, background_step(x_smooth, *popt), color='orange', linestyle='--', label='Background')
+        
         # Plot peak and background separately
-        plt.plot(x_smooth, polynomial_bg(x_smooth, *popt), color='orange', linestyle='--', label='Background')
+        
         plt.legend()
         plt.show()
 
