@@ -42,7 +42,16 @@ To close the program at any point press **ESCAPE**.
 
    $$T= N e^{\frac{x-x_0}{beta}} erfc\left(\frac{x-x_0}{\sigma\sqrt{2}} + \frac{\sigma}{\beta\sqrt{2}}\right)$$
    
-2) Quadratic background, Gaussian peaks. This is a simple routine, good for comparison to Buffit (UoB).
+2) Quadratic background, Gaussian peaks with a skewed Gaussian low energy tail. Use if step should be 0.
+
+   $$F=Q+G+T$$
+
+3) Quadratic background with a step function, Gaussian peaks. Use if low energy tail should be 0.
+
+   $$F=Q+S+G$$
+   
+4) Quadratic background, Gaussian peaks. This is a simple routine, good for comparison to Buffit (UoB).
 
    $$F=Q+G$$
+  
 
