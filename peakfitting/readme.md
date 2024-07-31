@@ -16,12 +16,33 @@ To close the fitted spectrum and return to the peak selection for another fit, p
 
 To close the program at any point press **ESCAPE**.
 
+---
 
 ### Fit Modes:
 
-0) Quadratic background with a step function, skewed Gaussian peaks
+0) Quadratic background with a step function, skewed Gaussian peaks. This is a very flexible fitting routine, but is less physically motivated than 1.
+  
+   $$F = Q+S+G_{sk}$$
 
-  $$F = Q+S+G_{sk}$$
-2) Quadratic background with a step function, Gaussian peaks with a skewed Gaussian low energy tail
-3) Quadratic background, Gaussian peaks
+   where
+
+   $$Q=ax^2+bx+c$$
+   
+   $$S = \frac{N}{\sigma\sqrt{2\pi}} \frac{stp}{1+e^{\frac{x-x_0}{\sigma}}}$$
+   
+   $$G_{sk} = \frac{N}{\sigma\sqrt{2\pi}} e^{\frac{(x-x_0)^2}{2\sigma^2}} \left(1+erf\left(\frac{skw(x-x_0)}{\sigma\sqrt(2)}\right)\right)$$
+  
+1) Quadratic background with a step function, Gaussian peaks with a skewed Gaussian low energy tail. This is analagous to RadWare, where each component is physically motivated.
+
+   $$F=Q+S+G+T$$
+
+   where
+
+   $$G=\frac{N}{\sigma\sqrt{2\pi}} e^{\frac{(x-x_0)^2}{2\sigma^2}}$$
+
+   $$T= N e^{\frac{x-x_0}{beta}} erfc\left(\frac{x-x_0}{\sigma\sqrt{2}} + \frac{\sigma}{\beta\sqrt{2}}\right)$$
+   
+2) Quadratic background, Gaussian peaks. This is a simple routine, good for comparison to Buffit (UoB).
+
+   $$F=Q+G$$
 
