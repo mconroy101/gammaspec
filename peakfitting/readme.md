@@ -28,9 +28,9 @@ To close the program at any point press **ESCAPE**.
 
    $$Q=ax^2+bx+c$$
    
-   $$S = \frac{N}{\sigma\sqrt{2\pi}} \frac{stp}{1+e^{\frac{x-x_0}{\sigma}}}$$
+   $$S = \frac{N}{\sigma\sqrt{2\pi}} \frac{stp}{1+\exp\left({\frac{x-x_0}{\sigma}}\right)}$$
    
-   $$G_{sk} = \frac{N}{\sigma\sqrt{2\pi}} e^{\frac{(x-x_0)^2}{2\sigma^2}} \left(1+erf\left(\frac{skw(x-x_0)}{\sigma\sqrt(2)}\right)\right)$$
+   $$G_{sk} = \frac{N}{\sigma\sqrt{2\pi}} \exp\left({\frac{(x-x_0)^2}{2\sigma^2}}\right) \left(1+erf\left(\frac{skw(x-x_0)}{\sigma\sqrt(2)}\right)\right)$$
   
 1) Quadratic background with a step function, Gaussian peaks with a skewed Gaussian low energy tail. This is analagous to RadWare, where each component is physically motivated.
 
@@ -40,7 +40,7 @@ To close the program at any point press **ESCAPE**.
 
    $$G=\frac{N}{\sigma\sqrt{2\pi}} e^{\frac{(x-x_0)^2}{2\sigma^2}}$$
 
-   $$T= N e^{\frac{x-x_0}{beta}} erfc\left(\frac{x-x_0}{\sigma\sqrt{2}} + \frac{\sigma}{\beta\sqrt{2}}\right)$$
+   $$T= N \exp\left({\frac{x-x_0}{beta}}\right) erfc\left(\frac{x-x_0}{\sigma\sqrt{2}} + \frac{\sigma}{\beta\sqrt{2}}\right)$$
    
 2) Quadratic background, Gaussian peaks with a skewed Gaussian low energy tail. Use if step should be 0.
 
